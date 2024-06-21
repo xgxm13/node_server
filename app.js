@@ -3,6 +3,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const app = express()
 const port = 3000
+const Joi = require('joi')
 const moment = require('moment')
 // 全局挂载 cors  解决跨域
 app.use(cors())
@@ -19,9 +20,31 @@ app.use(jwt({
 }).unless({
   path: [/^\/api\//]
 }))
+
+
 const loginRouter = require('./router/login')
+
 app.use('/api', loginRouter)
 
+// 处理 Joi 验证错误的中间件  
+app.use((err, req, res, next) => {
+  if (err instanceof Joi.ValidationError) {
+    return res.json({
+      code: 400,
+      msg: err.details.map(detail => detail.message)[0]
+    });
+  }
+  next(err); // 如果不是 Joi 验证错误，则传递错误到下一个中间件  
+});  
+
+// 错误处理中间件  
+app.use((err, req, res, next) => {
+  // 发送错误信息作为响应体  
+  res.json({
+    code: err.status || 500,
+    error: err.message,
+  });
+});
 
 app.listen(port, ()=> {
   console.log(`Example app listening on port ${port}`)
